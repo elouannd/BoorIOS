@@ -2,8 +2,7 @@
 
 **BoorIOS** (formerly BoriOuS) is a modern, feature-rich Booru image viewer for iOS and iPadOS. Built with SwiftUI and SwiftData, it offers a premium browsing experience for your favorite image boards.
 
-![BoorIOS Banner](https://github.com/elouannd/BoorIOS/blob/main/Simulator%20Screenshot%20-%20iPhone%2017%20-%202026-01-10%20at%2011.03.17.png) 
-*(Add your own screenshot here)*
+<img src="Simulator%20Screenshot%20-%20iPhone%2017%20-%202026-01-10%20at%2011.03.17.png" width="300" alt="BoorIOS Banner" />
 
 ## Features
 
