@@ -1,0 +1,32 @@
+# Xcode
+.DS_Store
+*.swp
+*.lock
+DerivedData/
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.usercontent
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcstate
+xcuserdata/
+
+# Build artifacts
+*.ipa
+*.app
+*.dSYM
+*.xcarchive
+Payload/
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+
+# Other
+*.hmap
+*.ipa

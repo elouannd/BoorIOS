@@ -17,7 +17,23 @@
 - **Download & Share**: Save high-quality images to your Photo Library or share them directly.
 - **Customizable**: Light/Dark mode, grid columns, content filtering (SFW/NSFW), and more.
 
-## Installation
+## Download & Sideloading
+
+📥 **[Download BoorIOS 1.1 IPA](https://github.com/elouannd/BoorIOS/releases/download/1.0/BoorIOS1.1.ipa)**
+
+Since this app is not on the App Store, you need to **sideload** it using a tool like:
+- **[AltStore](https://altstore.io/)** (Recommended)
+- **[SideStore](https://sidestore.io/)**
+- **TrollStore** (if compatible)
+
+### How to Install (AltStore)
+1. Download the `.ipa` file on your iPhone/iPad.
+2. Open **AltStore**.
+3. Tap the **+** button in the "My Apps" tab.
+4. Select `BoorIOS1.1.ipa`.
+5. Enjoy!
+
+## Installation (Source)
 
 1. Clone the repository:
    ```bash
