@@ -171,7 +171,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     
-                    Link(destination: URL(string: "https://github.com/elouann/BoorIOS")!) {
+                    Link(destination: URL(string: "https://github.com/elouannd/BoorIOS")!) {
                         HStack {
                             Text("Source Code")
                             Spacer()
