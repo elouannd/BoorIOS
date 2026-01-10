@@ -24,7 +24,6 @@
 Since this app is not on the App Store, you need to **sideload** it using a tool like:
 - **[AltStore](https://altstore.io/)** (Recommended)
 - **[SideStore](https://sidestore.io/)**
-- **TrollStore** (if compatible)
 
 ### How to Install (AltStore)
 1. Download the `.ipa` file on your iPhone/iPad.
