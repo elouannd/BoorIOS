@@ -12,7 +12,11 @@ import SwiftData
 struct BoriOuSApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            BooruSource.self,
+            UserPreferences.self,
+            FavoritePost.self,
+            Collection.self,
+            FavoriteTag.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +29,8 @@ struct BoriOuSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
+                .preferredColorScheme(.dark)
         }
         .modelContainer(sharedModelContainer)
     }
