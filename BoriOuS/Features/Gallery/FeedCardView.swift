@@ -14,6 +14,7 @@ struct FeedCardView: View {
     let sourceName: String
     let onTap: () -> Void
     let onFavorite: () -> Void
+    let onTagSearch: (String) -> Void
     
     @State private var isFavorited = false
     @State private var showFullTags = false
@@ -42,12 +43,32 @@ struct FeedCardView: View {
     
     private var header: some View {
         HStack {
-            // Source icon
-            Image(systemName: "photo.stack")
-                .foregroundStyle(.secondary)
-            
-            Text(sourceName)
-                .font(.subheadline.weight(.medium))
+            // Source icon and name
+            if let postSourceName = post.sourceId {
+                // Multi-source: show tappable badge that opens original post
+                Button {
+                    if let url = post.postPageUrl {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .foregroundStyle(Theme.primary)
+                        Text(postSourceName)
+                            .font(.subheadline.weight(.medium))
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            } else {
+                // Single source view
+                Image(systemName: "photo.stack")
+                    .foregroundStyle(.secondary)
+                Text(sourceName)
+                    .font(.subheadline.weight(.medium))
+            }
             
             Spacer()
             
@@ -136,7 +157,7 @@ struct FeedCardView: View {
             // Tags
             if !post.tags.isEmpty {
                 TagFlowView(tags: Array(post.tags.prefix(showFullTags ? 50 : 8))) { tag in
-                    // Tag tap action - could trigger search
+                    onTagSearch(tag)
                 }
                 
                 if post.tags.count > 8 {
@@ -253,7 +274,8 @@ struct FlowLayout: Layout {
             post: samplePost,
             sourceName: "Safebooru",
             onTap: {},
-            onFavorite: {}
+            onFavorite: {},
+            onTagSearch: { _ in }
         )
         .padding()
     }

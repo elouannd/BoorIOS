@@ -27,6 +27,7 @@ struct Post: Identifiable, Decodable, Hashable {
     
     // Source identifier (which booru this came from)
     var sourceId: String?
+    var sourceBaseUrl: String?
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -108,7 +109,8 @@ struct Post: Identifiable, Decodable, Hashable {
         fileExt: String? = nil,
         fileSize: Int? = nil,
         uploaderName: String? = nil,
-        sourceId: String? = nil
+        sourceId: String? = nil,
+        sourceBaseUrl: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -125,6 +127,7 @@ struct Post: Identifiable, Decodable, Hashable {
         self.fileSize = fileSize
         self.uploaderName = uploaderName
         self.sourceId = sourceId
+        self.sourceBaseUrl = sourceBaseUrl
     }
     
     // MARK: - Computed Properties
@@ -150,6 +153,24 @@ struct Post: Identifiable, Decodable, Hashable {
     /// Full resolution URL
     var fullUrl: URL? {
         fileUrl.flatMap { URL(string: $0) }
+    }
+    
+    /// URL to the post page on the booru site
+    var postPageUrl: URL? {
+        guard let baseUrl = sourceBaseUrl else { return nil }
+        // Most boorus use /posts/{id} or /post/show/{id}
+        // Danbooru/Gelbooru style
+        if baseUrl.contains("danbooru") || baseUrl.contains("safebooru") {
+            return URL(string: "\(baseUrl)/posts/\(id)")
+        } else if baseUrl.contains("e621") || baseUrl.contains("e926") {
+            return URL(string: "\(baseUrl)/posts/\(id)")
+        } else if baseUrl.contains("gelbooru") {
+            return URL(string: "\(baseUrl)/index.php?page=post&s=view&id=\(id)")
+        } else if baseUrl.contains("konachan") || baseUrl.contains("yande.re") {
+            return URL(string: "\(baseUrl)/post/show/\(id)")
+        }
+        // Default fallback
+        return URL(string: "\(baseUrl)/posts/\(id)")
     }
     
     /// Aspect ratio

@@ -19,7 +19,7 @@ struct GalleryView: View {
     private var preferences: UserPreferences? {
         userPreferences.first
     }
-    @State private var selectedPost: Post?
+    @State private var scrollToPostId: Int?
     @State private var searchText = ""
     @State private var showSourcePicker = false
     @State private var columnCount = 3
@@ -49,7 +49,7 @@ struct GalleryView: View {
                     galleryGrid
                 }
             }
-            .navigationTitle(viewModel.currentSource?.name ?? "Gallery")
+            .navigationTitle(viewModel.isMultiSourceSearch ? "All Sources" : (viewModel.currentSource?.name ?? "Gallery"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Search tags...")
             .onSubmit(of: .search) {
@@ -105,28 +105,20 @@ struct GalleryView: View {
             .sheet(isPresented: $showSourcePicker) {
                 SourcePickerSheet(
                     sources: sources,
-                    selectedSource: viewModel.currentSource
-                ) { source in
-                    // Update preferences
-                    preferences?.activeSourceId = source.id.uuidString
-                    Task {
-                        await viewModel.loadPosts(from: source)
-                    }
-                }
-            }
-            .fullScreenCover(item: $selectedPost) { post in
-                ImageViewerView(
-                    post: post,
-                    posts: viewModel.posts,
-                    sourceId: viewModel.currentSource?.id.uuidString ?? "",
-                    onDismiss: { selectedPost = nil },
-                    onSelectTag: { tag in
-                        selectedPost = nil
-                        searchText = tag
-                        if let source = viewModel.currentSource {
-                            Task {
-                                await viewModel.loadPosts(from: source, tags: tag)
-                            }
+                    selectedSource: viewModel.currentSource,
+                    isAllSourcesSelected: viewModel.isMultiSourceSearch,
+                    onSelect: { source in
+                        // Update preferences
+                        preferences?.activeSourceId = source.id.uuidString
+                        Task {
+                            await viewModel.loadPosts(from: source)
+                        }
+                    },
+                    onSelectAll: {
+                        // Clear active source preference for "All"
+                        preferences?.activeSourceId = nil
+                        Task {
+                            await viewModel.loadPostsFromAllSources(sources: sources, tags: searchText.isEmpty ? nil : searchText)
                         }
                     }
                 )
@@ -149,7 +141,10 @@ struct GalleryView: View {
                         useHighQuality: preferences?.preferHighQualityThumbnails ?? false
                     )
                         .onTapGesture {
-                            selectedPost = post
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                scrollToPostId = post.id
+                                isFeedMode = true
+                            }
                         }
                         .onAppear {
                             if viewModel.shouldLoadMore(currentPost: post) {
@@ -173,38 +168,60 @@ struct GalleryView: View {
     }
     
     private var feedView: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(viewModel.posts) { post in
-                    FeedCardView(
-                        post: post,
-                        sourceName: viewModel.currentSource?.name ?? "Unknown",
-                        onTap: {
-                            selectedPost = post
-                        },
-                        onFavorite: {
-                            toggleFavorite(post)
-                        }
-                    )
-                    .onAppear {
-                        if viewModel.shouldLoadMore(currentPost: post) {
-                            Task {
-                                await viewModel.loadMorePosts()
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.posts) { post in
+                        FeedCardView(
+                            post: post,
+                            sourceName: viewModel.isMultiSourceSearch ? (post.sourceId ?? "Unknown") : (viewModel.currentSource?.name ?? "Unknown"),
+                            onTap: {
+                                // Already in feed mode - no action needed
+                            },
+                            onFavorite: {
+                                toggleFavorite(post)
+                            },
+                            onTagSearch: { tag in
+                                searchText = tag
+                                Task {
+                                    if let source = viewModel.currentSource {
+                                        await viewModel.loadPosts(from: source, tags: tag)
+                                    } else if viewModel.isMultiSourceSearch {
+                                        await viewModel.loadPostsFromAllSources(sources: sources, tags: tag)
+                                    }
+                                }
+                            }
+                        )
+                        .id(post.id)
+                        .onAppear {
+                            if viewModel.shouldLoadMore(currentPost: post) {
+                                Task {
+                                    await viewModel.loadMorePosts()
+                                }
                             }
                         }
                     }
+                    
+                    // Loading more indicator
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .padding()
+                    }
                 }
-                
-                // Loading more indicator
-                if viewModel.isLoadingMore {
-                    ProgressView()
-                        .padding()
+                .padding()
+            }
+            .refreshable {
+                await viewModel.refresh()
+            }
+            .onChange(of: scrollToPostId) { _, newId in
+                if let id = newId {
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .top)
+                    }
+                    // Clear after scrolling
+                    scrollToPostId = nil
                 }
             }
-            .padding()
-        }
-        .refreshable {
-            await viewModel.refresh()
         }
     }
     
@@ -288,7 +305,11 @@ struct GalleryView: View {
             showSourcePicker = true
         } label: {
             HStack(spacing: 4) {
-                if let source = viewModel.currentSource {
+                if viewModel.isMultiSourceSearch {
+                    Image(systemName: "globe")
+                    Text("All Sources")
+                        .font(.subheadline)
+                } else if let source = viewModel.currentSource {
                     Image(systemName: source.iconName)
                     Text(source.name)
                         .font(.subheadline)
@@ -328,40 +349,90 @@ struct GalleryView: View {
 struct SourcePickerSheet: View {
     let sources: [BooruSource]
     let selectedSource: BooruSource?
+    let isAllSourcesSelected: Bool
     let onSelect: (BooruSource) -> Void
+    let onSelectAll: () -> Void
     
     @Environment(\.dismiss) private var dismiss
     
+    init(
+        sources: [BooruSource],
+        selectedSource: BooruSource?,
+        isAllSourcesSelected: Bool = false,
+        onSelect: @escaping (BooruSource) -> Void,
+        onSelectAll: @escaping () -> Void = {}
+    ) {
+        self.sources = sources
+        self.selectedSource = selectedSource
+        self.isAllSourcesSelected = isAllSourcesSelected
+        self.onSelect = onSelect
+        self.onSelectAll = onSelectAll
+    }
+    
     var body: some View {
         NavigationStack {
-            List(sources.filter { $0.isEnabled }.sorted(by: { $0.order < $1.order })) { source in
-                Button {
-                    onSelect(source)
-                    dismiss()
-                } label: {
-                    HStack {
-                        Image(systemName: source.iconName)
-                            .foregroundStyle(source.isSFW ? .green : .orange)
-                            .frame(width: 30)
-                        
-                        VStack(alignment: .leading) {
-                            Text(source.name)
-                                .foregroundStyle(.primary)
-                            Text(source.baseURL)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        if source.id == selectedSource?.id {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.blue)
+            List {
+                // All Sources option
+                Section {
+                    Button {
+                        onSelectAll()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundStyle(Theme.primary)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading) {
+                                Text("All Sources")
+                                    .foregroundStyle(.primary)
+                                Text("Search across all enabled sources")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            if isAllSourcesSelected {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
                         }
                     }
                 }
-                .disabled(!source.isEnabled)
-                .opacity(source.isEnabled ? 1 : 0.5)
+                
+                // Individual sources
+                Section {
+                    ForEach(sources.filter { $0.isEnabled }.sorted(by: { $0.order < $1.order })) { source in
+                        Button {
+                            onSelect(source)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Image(systemName: source.iconName)
+                                    .foregroundStyle(source.isSFW ? .green : .orange)
+                                    .frame(width: 30)
+                                
+                                VStack(alignment: .leading) {
+                                    Text(source.name)
+                                        .foregroundStyle(.primary)
+                                    Text(source.baseURL)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if !isAllSourcesSelected && source.id == selectedSource?.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Individual Sources")
+                }
             }
             .navigationTitle("Select Source")
             .navigationBarTitleDisplayMode(.inline)

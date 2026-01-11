@@ -29,9 +29,27 @@ struct BoriOuSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
-                .preferredColorScheme(.dark)
+            ContentView()
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+/// Root content view that applies dynamic appearance
+struct ContentView: View {
+    @Query private var preferences: [UserPreferences]
+    
+    private var colorScheme: ColorScheme? {
+        guard let prefs = preferences.first else { return .dark }
+        switch prefs.appearanceMode {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+    
+    var body: some View {
+        MainTabView()
+            .preferredColorScheme(colorScheme)
     }
 }

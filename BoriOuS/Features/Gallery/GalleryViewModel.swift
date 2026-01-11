@@ -37,6 +37,9 @@ final class GalleryViewModel {
     
     var currentTags: String = ""
     var currentSource: BooruSource?
+    var isMultiSourceSearch = false
+    var sourcesForMultiSearch: [BooruSource] = []
+    
     var sortOrder: SortOrder = .newest {
         didSet {
             if sortOrder != oldValue {
@@ -54,10 +57,11 @@ final class GalleryViewModel {
     
     // MARK: - Public Methods
     
-    /// Load initial posts
+    /// Load initial posts from a single source
     func loadPosts(from source: BooruSource, tags: String? = nil) async {
         guard !isLoading else { return }
         
+        isMultiSourceSearch = false
         currentSource = source
         currentTags = tags ?? ""
         currentPage = 1
@@ -83,11 +87,90 @@ final class GalleryViewModel {
         isLoading = false
     }
     
-    /// Load more posts (pagination)
+    /// Load posts from all enabled sources
+    func loadPostsFromAllSources(sources: [BooruSource], tags: String? = nil) async {
+        guard !isLoading else { return }
+        
+        let enabledSources = sources.filter { $0.isEnabled }
+        guard !enabledSources.isEmpty else { return }
+        
+        isMultiSourceSearch = true
+        sourcesForMultiSearch = enabledSources
+        currentSource = nil
+        currentTags = tags ?? ""
+        currentPage = 1
+        hasMorePages = false  // Multi-source doesn't support pagination
+        isLoading = true
+        error = nil
+        
+        var allPosts: [Post] = []
+        var fetchErrors: [Error] = []
+        
+        // Fetch from all sources concurrently
+        await withTaskGroup(of: (BooruSource, Result<[Post], Error>).self) { group in
+            for source in enabledSources {
+                group.addTask {
+                    do {
+                        let posts = try await self.booruService.fetchPosts(
+                            from: source,
+                            tags: tags,
+                            page: 1,
+                            limit: 20  // Limit per source to avoid overwhelming
+                        )
+                        return (source, .success(posts))
+                    } catch {
+                        return (source, .failure(error))
+                    }
+                }
+            }
+            
+            for await (source, result) in group {
+                switch result {
+                case .success(let posts):
+                    // Tag each post with its source info
+                    let taggedPosts = posts.map { post -> Post in
+                        var mutablePost = post
+                        mutablePost.sourceId = source.name
+                        mutablePost.sourceBaseUrl = source.baseURL
+                        return mutablePost
+                    }
+                    allPosts.append(contentsOf: taggedPosts)
+                case .failure(let error):
+                    fetchErrors.append(error)
+                }
+            }
+        }
+        
+        // Remove duplicates based on post ID and file URL
+        var seenIds = Set<String>()
+        let uniquePosts = allPosts.filter { post in
+            let key = "\(post.id)-\(post.fileUrl ?? "")"
+            if seenIds.contains(key) {
+                return false
+            }
+            seenIds.insert(key)
+            return true
+        }
+        
+        // Sort by score by default for multi-source
+        let sortedPosts = uniquePosts.sorted { $0.score > $1.score }
+        
+        storePosts(sortedPosts)
+        
+        // Only set error if ALL sources failed
+        if allPosts.isEmpty && !fetchErrors.isEmpty {
+            self.error = fetchErrors.first
+        }
+        
+        isLoading = false
+    }
+    
+    /// Load more posts (pagination) - only for single source
     func loadMorePosts() async {
         guard !isLoadingMore,
               !isLoading,
               hasMorePages,
+              !isMultiSourceSearch,
               let source = currentSource else { return }
         
         isLoadingMore = true
@@ -118,12 +201,16 @@ final class GalleryViewModel {
     
     /// Refresh posts
     func refresh() async {
-        guard let source = currentSource else { return }
-        await loadPosts(from: source, tags: currentTags.isEmpty ? nil : currentTags)
+        if isMultiSourceSearch {
+            await loadPostsFromAllSources(sources: sourcesForMultiSearch, tags: currentTags.isEmpty ? nil : currentTags)
+        } else if let source = currentSource {
+            await loadPosts(from: source, tags: currentTags.isEmpty ? nil : currentTags)
+        }
     }
     
     /// Check if should load more (for infinite scroll)
     func shouldLoadMore(currentPost: Post) -> Bool {
+        guard !isMultiSourceSearch else { return false }
         guard let lastPost = posts.last else { return false }
         return currentPost.id == lastPost.id && hasMorePages && !isLoadingMore
     }
@@ -158,3 +245,4 @@ final class GalleryViewModel {
         }
     }
 }
+

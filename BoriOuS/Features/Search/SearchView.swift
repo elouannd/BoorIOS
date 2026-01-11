@@ -13,6 +13,7 @@ struct SearchView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var sources: [BooruSource]
     @Query private var preferences: [UserPreferences]
+    @Query private var favorites: [FavoritePost]
     @Query(sort: \FavoriteTag.order) private var favoriteTags: [FavoriteTag]
     
     @State private var searchText = ""
@@ -21,6 +22,11 @@ struct SearchView: View {
     @State private var isSearching = false
     @State private var showResults = false
     @State private var resultsViewModel = GalleryViewModel()
+    
+    // View mode state for results
+    @State private var isFeedMode = false
+    @State private var columnCount = 3
+    @State private var scrollToPostId: Int?
     
     private let booruService = BooruService()
     
@@ -35,17 +41,26 @@ struct SearchView: View {
         return sources.first { $0.isEnabled && $0.isSFW } ?? sources.first
     }
     
+    private var gridColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 2), count: columnCount)
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Selected tags
+                // Selected tags bar (always visible when tags selected)
                 if !selectedTags.isEmpty {
                     selectedTagsBar
                 }
                 
-                // Search results or suggestions
+                // Results control bar (shown when viewing results)
                 if showResults {
-                    searchResultsGrid
+                    resultsControlBar
+                }
+                
+                // Main content
+                if showResults {
+                    searchResultsContent
                 } else if !suggestions.isEmpty {
                     suggestionsList
                 } else if !searchText.isEmpty {
@@ -59,9 +74,14 @@ struct SearchView: View {
                     }
                 }
             }
-            .navigationTitle("Search")
+            .navigationTitle(showResults ? "Results" : "Search")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Search tags...")
             .onChange(of: searchText) { _, newValue in
+                if showResults && !newValue.isEmpty {
+                    // User is typing new search - go back to suggestions
+                    showResults = false
+                }
                 Task {
                     await fetchSuggestions(for: newValue)
                 }
@@ -69,10 +89,277 @@ struct SearchView: View {
             .onSubmit(of: .search) {
                 performSearch()
             }
+            .toolbar {
+                if showResults {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            withAnimation {
+                                showResults = false
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Search")
+                            }
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 12) {
+                            // View mode toggle
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isFeedMode.toggle()
+                                }
+                            } label: {
+                                Image(systemName: isFeedMode ? "rectangle.grid.1x2" : "square.grid.3x3")
+                            }
+                            
+                            // Column picker (only in grid mode)
+                            if !isFeedMode {
+                                Menu {
+                                    Picker("Columns", selection: $columnCount) {
+                                        Text("2 Columns").tag(2)
+                                        Text("3 Columns").tag(3)
+                                        Text("4 Columns").tag(4)
+                                        Text("5 Columns").tag(5)
+                                    }
+                                } label: {
+                                    Image(systemName: "slider.horizontal.3")
+                                }
+                            }
+                            
+                            // Sort order picker
+                            Menu {
+                                Picker("Sort", selection: $resultsViewModel.sortOrder) {
+                                    ForEach(SortOrder.allCases, id: \.self) { order in
+                                        Label(order.rawValue, systemImage: order.icon).tag(order)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: resultsViewModel.sortOrder.icon)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Subviews
+    // MARK: - Results Control Bar
+    
+    private var resultsControlBar: some View {
+        HStack(spacing: 16) {
+            // Back button
+            Button {
+                withAnimation {
+                    showResults = false
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .font(.subheadline)
+            }
+            
+            Spacer()
+            
+            // View mode toggle
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isFeedMode.toggle()
+                }
+            } label: {
+                Image(systemName: isFeedMode ? "rectangle.grid.1x2" : "square.grid.3x3")
+                    .font(.body)
+            }
+            
+            // Column picker (only in grid mode)
+            if !isFeedMode {
+                Menu {
+                    Picker("Columns", selection: $columnCount) {
+                        Text("2 Columns").tag(2)
+                        Text("3 Columns").tag(3)
+                        Text("4 Columns").tag(4)
+                        Text("5 Columns").tag(5)
+                    }
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.body)
+                }
+            }
+            
+            // Sort order picker
+            Menu {
+                Picker("Sort", selection: $resultsViewModel.sortOrder) {
+                    ForEach(SortOrder.allCases, id: \.self) { order in
+                        Label(order.rawValue, systemImage: order.icon).tag(order)
+                    }
+                }
+            } label: {
+                Image(systemName: resultsViewModel.sortOrder.icon)
+                    .font(.body)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(.systemBackground))
+        .overlay(
+            Divider(), alignment: .bottom
+        )
+    }
+    
+    // MARK: - Search Results Content
+    
+    @ViewBuilder
+    private var searchResultsContent: some View {
+        if resultsViewModel.isLoading && resultsViewModel.posts.isEmpty {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                Text("Searching...")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = resultsViewModel.error, resultsViewModel.posts.isEmpty {
+            VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.largeTitle)
+                    .foregroundStyle(.orange)
+                Text("Error")
+                    .font(.headline)
+                Text(error.localizedDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button("Retry") {
+                    Task {
+                        await resultsViewModel.refresh()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        } else if resultsViewModel.posts.isEmpty {
+            VStack(spacing: 16) {
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.secondary)
+                Text("No results found")
+                    .font(.headline)
+                Text("Try different tags")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        } else if isFeedMode {
+            searchResultsFeed
+        } else {
+            searchResultsGrid
+        }
+    }
+    
+    private var searchResultsGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: gridColumns, spacing: 2) {
+                ForEach(resultsViewModel.posts) { post in
+                    GalleryGridItem(
+                        post: post,
+                        useHighQuality: userPrefs?.preferHighQualityThumbnails ?? false
+                    )
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            scrollToPostId = post.id
+                            isFeedMode = true
+                        }
+                    }
+                    .onAppear {
+                        if resultsViewModel.shouldLoadMore(currentPost: post) {
+                            Task {
+                                await resultsViewModel.loadMorePosts()
+                            }
+                        }
+                    }
+                }
+                
+                if resultsViewModel.isLoadingMore {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .padding()
+                        Spacer()
+                    }
+                    .gridCellColumns(columnCount)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+        .refreshable {
+            await resultsViewModel.refresh()
+        }
+    }
+    
+    private var searchResultsFeed: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(resultsViewModel.posts) { post in
+                        FeedCardView(
+                            post: post,
+                            sourceName: post.sourceId ?? (activeSource?.name ?? "Unknown"),
+                            onTap: { },
+                            onFavorite: {
+                                toggleFavorite(post)
+                            },
+                            onTagSearch: { tag in
+                                // Trigger new search with this tag
+                                selectedTags = [tag]
+                                performSearch()
+                            }
+                        )
+                        .id(post.id)
+                        .onAppear {
+                            if resultsViewModel.shouldLoadMore(currentPost: post) {
+                                Task {
+                                    await resultsViewModel.loadMorePosts()
+                                }
+                            }
+                        }
+                    }
+                    
+                    if resultsViewModel.isLoadingMore {
+                        ProgressView()
+                            .padding()
+                    }
+                }
+                .padding()
+            }
+            .refreshable {
+                await resultsViewModel.refresh()
+            }
+            .onChange(of: scrollToPostId) { _, newId in
+                if let id = newId {
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .top)
+                    }
+                    scrollToPostId = nil
+                }
+            }
+        }
+    }
+    
+    private func toggleFavorite(_ post: Post) {
+        let sourceId = activeSource?.id.uuidString ?? ""
+        
+        if let existing = favorites.first(where: { $0.postId == post.id && $0.sourceId == sourceId }) {
+            modelContext.delete(existing)
+        } else {
+            let favorite = FavoritePost.from(post: post, sourceId: sourceId)
+            modelContext.insert(favorite)
+        }
+    }
+    
+    // MARK: - Original Subviews
     
     private var selectedTagsBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -149,7 +436,6 @@ struct SearchView: View {
     }
     
     private func addTagToFavorites(_ tag: Tag) {
-        // Check if already exists
         if !favoriteTags.contains(where: { $0.name == tag.name }) {
             let favorite = FavoriteTag.from(tag: tag)
             favorite.order = favoriteTags.count
@@ -244,10 +530,6 @@ struct SearchView: View {
         }
     }
     
-    private var searchResultsGrid: some View {
-        GalleryView()
-    }
-    
     // MARK: - Actions
     
     private func fetchSuggestions(for query: String) async {
@@ -281,7 +563,7 @@ struct SearchView: View {
         let searchQuery = selectedTags.joined(separator: " ")
         
         // Save to history
-        if var prefs = userPrefs {
+        if let prefs = userPrefs {
             prefs.addToSearchHistory(searchQuery)
         }
         
@@ -299,3 +581,4 @@ struct SearchView: View {
     SearchView()
         .modelContainer(for: [BooruSource.self, UserPreferences.self], inMemory: true)
 }
+

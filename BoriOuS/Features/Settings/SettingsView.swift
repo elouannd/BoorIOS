@@ -17,7 +17,7 @@ struct SettingsView: View {
     @State private var showSourceSettings = false
     @State private var showBlacklistEditor = false
     @State private var newBlacklistTag = ""
-    
+    @State private var cacheSizeText = "..."    
     private var userPrefs: UserPreferences {
         if let existing = preferences.first {
             return existing
@@ -109,6 +109,29 @@ struct SettingsView: View {
                 } footer: {
                     Text("Posts containing blacklisted tags will be hidden.")
                 }
+                // Appearance Section
+                Section {
+                    Picker(selection: Binding(
+                        get: { userPrefs.appearanceMode },
+                        set: { userPrefs.appearanceMode = $0 }
+                    )) {
+                        ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                            Label(mode.displayName, systemImage: mode.icon)
+                                .tag(mode)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .foregroundStyle(Theme.primary)
+                                .frame(width: 30)
+                            Text("Appearance")
+                        }
+                    }
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("Choose System to follow your device settings.")
+                }
                 
                 // Display Section
                 Section {
@@ -167,7 +190,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
+                        Text("1.1.0")
                             .foregroundStyle(.secondary)
                     }
                     
@@ -194,8 +217,30 @@ struct SettingsView: View {
                             Text("Clear Search History")
                         }
                     }
+                    
+                    Button(role: .destructive) {
+                        Task {
+                            await ImageCache.shared.clearAllCache()
+                            // Force UI refresh
+                            cacheSizeText = "0 MB"
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "photo.stack")
+                                .frame(width: 30)
+                            Text("Clear Image Cache")
+                            Spacer()
+                            Text(cacheSizeText)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .task {
+                        await updateCacheSize()
+                    }
                 } header: {
                     Text("Data")
+                } footer: {
+                    Text("Images are cached to reduce data usage and improve loading times.")
                 }
             }
             .navigationTitle("Settings")
@@ -204,6 +249,14 @@ struct SettingsView: View {
     
     private func clearSearchHistory() {
         userPrefs.searchHistory = []
+    }
+    
+    private func updateCacheSize() async {
+        let bytes = await ImageCache.shared.diskCacheSize()
+        let mb = Double(bytes) / (1024 * 1024)
+        await MainActor.run {
+            cacheSizeText = String(format: "%.1f MB", mb)
+        }
     }
 }
 

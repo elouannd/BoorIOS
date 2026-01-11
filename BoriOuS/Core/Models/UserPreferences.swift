@@ -8,6 +8,29 @@
 import Foundation
 import SwiftData
 
+/// Appearance mode for the app
+enum AppearanceMode: String, Codable, CaseIterable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+    
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        }
+    }
+}
+
 /// User preferences stored with SwiftData
 @Model
 final class UserPreferences {
@@ -31,9 +54,17 @@ final class UserPreferences {
     var searchHistory: [String]
     var maxSearchHistoryCount: Int
     
-    // Appearance
-    var prefersDarkMode: Bool
+    // Appearance - optional for backwards compatibility
+    var appearanceModeRaw: String?
     var accentColorHex: String
+    
+    var appearanceMode: AppearanceMode {
+        get { 
+            guard let raw = appearanceModeRaw else { return .dark }
+            return AppearanceMode(rawValue: raw) ?? .dark
+        }
+        set { appearanceModeRaw = newValue.rawValue }
+    }
     
     // Active Source
     var activeSourceId: String?
@@ -50,7 +81,7 @@ final class UserPreferences {
         blacklistedTags: [String] = [],
         searchHistory: [String] = [],
         maxSearchHistoryCount: Int = 50,
-        prefersDarkMode: Bool = true,
+        appearanceMode: AppearanceMode = .dark,
         accentColorHex: String = "#6366F1",
         activeSourceId: String? = nil
     ) {
@@ -65,7 +96,7 @@ final class UserPreferences {
         self.blacklistedTags = blacklistedTags
         self.searchHistory = searchHistory
         self.maxSearchHistoryCount = maxSearchHistoryCount
-        self.prefersDarkMode = prefersDarkMode
+        self.appearanceModeRaw = appearanceMode.rawValue
         self.accentColorHex = accentColorHex
         self.activeSourceId = activeSourceId
     }
