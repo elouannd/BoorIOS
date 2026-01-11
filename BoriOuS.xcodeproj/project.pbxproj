@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0E50600A2F14223B00E946DC /* icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 0E5060092F14223B00E946DC /* icon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,7 +27,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0E5060092F14223B00E946DC /* icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = icon.icon; path = BoriOuS.xcodeproj/BoriOuS/icon.icon; sourceTree = "<group>"; };
 		0E6591F82F129A5000D9C515 /* BoriOuS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoriOuS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E6592072F129A5100D9C515 /* BoriOuSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoriOuSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E6592112F129A5100D9C515 /* BoriOuSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoriOuSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -80,7 +78,6 @@
 		0E6591EF2F129A5000D9C515 = {
 			isa = PBXGroup;
 			children = (
-				0E5060092F14223B00E946DC /* icon.icon */,
 				0E6591FA2F129A5000D9C515 /* BoriOuS */,
 				0E65920A2F129A5100D9C515 /* BoriOuSTests */,
 				0E6592142F129A5100D9C515 /* BoriOuSUITests */,
@@ -218,7 +215,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0E50600A2F14223B00E946DC /* icon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,7 +396,7 @@
 		0E65921C2F129A5100D9C515 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = icon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -434,7 +430,7 @@
 		0E65921D2F129A5100D9C515 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = icon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
