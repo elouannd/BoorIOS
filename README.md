@@ -20,7 +20,7 @@
 
 ## Download & Sideloading
 
-📥 **[Download BoorIOS 1.2.0 IPA](https://github.com/elouannd/BoorIOS/releases/download/1.2.0/BoorIOS1.2.0.ipa)**
+📥 **[Download BoorIOS 1.2.0 IPA](https://github.com/elouannd/BoorIOS/releases/download/1.2/BoorIOS1.2.0.ipa)**
 
 Since this app is not on the App Store, you need to **sideload** it using a tool like:
 - **[AltStore](https://altstore.io/)** (Recommended)
