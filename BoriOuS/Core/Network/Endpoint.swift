@@ -38,27 +38,34 @@ extension Endpoint {
 /// Booru-specific endpoints
 enum BooruEndpoint: Endpoint {
     // Danbooru endpoints
-    case danbooruPosts(tags: String?, page: Int, limit: Int)
-    case danbooruPost(id: Int)
-    case danbooruTags(query: String, limit: Int)
-    case danbooruAutocomplete(query: String)
+    case danbooruPosts(baseURL: String, tags: String?, page: Int, limit: Int)
+    case danbooruPost(baseURL: String, id: Int)
+    case danbooruTags(baseURL: String, query: String, limit: Int)
+    case danbooruAutocomplete(baseURL: String, query: String)
     
     // Safebooru endpoints
-    case safebooruPosts(tags: String?, page: Int, limit: Int)
-    case safebooruTags(query: String, limit: Int)
+    case safebooruPosts(baseURL: String, tags: String?, page: Int, limit: Int)
+    case safebooruTags(baseURL: String, query: String, limit: Int)
     
     // Gelbooru endpoints
-    case gelbooruPosts(tags: String?, page: Int, limit: Int, apiKey: String?, userId: String?)
-    case gelbooruTags(query: String, limit: Int)
+    case gelbooruPosts(baseURL: String, tags: String?, page: Int, limit: Int, apiKey: String?, userId: String?)
+    case gelbooruTags(baseURL: String, query: String, limit: Int)
     
     var baseURL: String {
         switch self {
-        case .danbooruPosts, .danbooruPost, .danbooruTags, .danbooruAutocomplete:
-            return "https://danbooru.donmai.us"
-        case .safebooruPosts, .safebooruTags:
-            return "https://safebooru.org"
-        case .gelbooruPosts, .gelbooruTags:
-            return "https://gelbooru.com"
+        case .danbooruPosts(let url, _, _, _),
+             .danbooruPost(let url, _),
+             .danbooruTags(let url, _, _),
+             .danbooruAutocomplete(let url, _):
+            return url
+            
+        case .safebooruPosts(let url, _, _, _),
+             .safebooruTags(let url, _, _):
+            return url
+            
+        case .gelbooruPosts(let url, _, _, _, _, _),
+             .gelbooruTags(let url, _, _):
+            return url
         }
     }
     
@@ -83,7 +90,7 @@ enum BooruEndpoint: Endpoint {
     
     var queryItems: [URLQueryItem]? {
         switch self {
-        case .danbooruPosts(let tags, let page, let limit):
+        case .danbooruPosts(_, let tags, let page, let limit):
             var items: [URLQueryItem] = [
                 URLQueryItem(name: "page", value: "\(page)"),
                 URLQueryItem(name: "limit", value: "\(limit)")
@@ -96,21 +103,21 @@ enum BooruEndpoint: Endpoint {
         case .danbooruPost:
             return nil
             
-        case .danbooruTags(let query, let limit):
+        case .danbooruTags(_, let query, let limit):
             return [
                 URLQueryItem(name: "search[name_matches]", value: "\(query)*"),
                 URLQueryItem(name: "limit", value: "\(limit)"),
                 URLQueryItem(name: "search[order]", value: "count")
             ]
             
-        case .danbooruAutocomplete(let query):
+        case .danbooruAutocomplete(_, let query):
             return [
                 URLQueryItem(name: "search[query]", value: query),
                 URLQueryItem(name: "search[type]", value: "tag_query"),
                 URLQueryItem(name: "limit", value: "10")
             ]
             
-        case .safebooruPosts(let tags, let page, let limit):
+        case .safebooruPosts(_, let tags, let page, let limit):
             var items: [URLQueryItem] = [
                 URLQueryItem(name: "page", value: "dapi"),
                 URLQueryItem(name: "s", value: "post"),
@@ -124,7 +131,7 @@ enum BooruEndpoint: Endpoint {
             }
             return items
             
-        case .safebooruTags(let query, let limit):
+        case .safebooruTags(_, let query, let limit):
             return [
                 URLQueryItem(name: "page", value: "dapi"),
                 URLQueryItem(name: "s", value: "tag"),
@@ -134,7 +141,7 @@ enum BooruEndpoint: Endpoint {
                 URLQueryItem(name: "limit", value: "\(limit)")
             ]
             
-        case .gelbooruPosts(let tags, let page, let limit, let apiKey, let userId):
+        case .gelbooruPosts(_, let tags, let page, let limit, let apiKey, let userId):
             var items: [URLQueryItem] = [
                 URLQueryItem(name: "page", value: "dapi"),
                 URLQueryItem(name: "s", value: "post"),
@@ -154,7 +161,7 @@ enum BooruEndpoint: Endpoint {
             }
             return items
             
-        case .gelbooruTags(let query, let limit):
+        case .gelbooruTags(_, let query, let limit):
             return [
                 URLQueryItem(name: "page", value: "dapi"),
                 URLQueryItem(name: "s", value: "tag"),

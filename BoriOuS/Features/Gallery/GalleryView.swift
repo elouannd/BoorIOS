@@ -218,8 +218,18 @@ struct GalleryView: View {
                     withAnimation {
                         proxy.scrollTo(id, anchor: .top)
                     }
-                    // Clear after scrolling
                     scrollToPostId = nil
+                }
+            }
+            .onAppear {
+                if let id = scrollToPostId {
+                    // Slight delay to ensure layout is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(id, anchor: .top)
+                        }
+                        scrollToPostId = nil
+                    }
                 }
             }
         }

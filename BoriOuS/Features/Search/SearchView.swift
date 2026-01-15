@@ -345,6 +345,16 @@ struct SearchView: View {
                     scrollToPostId = nil
                 }
             }
+            .onAppear {
+                if let id = scrollToPostId {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(id, anchor: .top)
+                        }
+                        scrollToPostId = nil
+                    }
+                }
+            }
         }
     }
     

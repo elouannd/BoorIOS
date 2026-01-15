@@ -47,7 +47,7 @@ actor BooruService {
     func fetchPost(id: Int, from source: BooruSource) async throws -> Post? {
         switch source.apiType {
         case .danbooru:
-            let endpoint = BooruEndpoint.danbooruPost(id: id)
+            let endpoint = BooruEndpoint.danbooruPost(baseURL: source.baseURL, id: id)
             return try await apiClient.fetch(endpoint)
         default:
             // For other sources, fetch with ID filter
@@ -68,10 +68,10 @@ actor BooruService {
         
         switch source.apiType {
         case .danbooru:
-            let endpoint = BooruEndpoint.danbooruTags(query: query, limit: limit)
+            let endpoint = BooruEndpoint.danbooruTags(baseURL: source.baseURL, query: query, limit: limit)
             return try await apiClient.fetch(endpoint)
         case .gelbooru:
-            let endpoint = BooruEndpoint.gelbooruTags(query: query, limit: limit)
+            let endpoint = BooruEndpoint.gelbooruTags(baseURL: source.baseURL, query: query, limit: limit)
             let response: [Tag] = try await apiClient.fetch(endpoint)
             return response
         case .moebooru:
@@ -92,7 +92,7 @@ actor BooruService {
         
         switch source.apiType {
         case .danbooru:
-            let endpoint = BooruEndpoint.danbooruAutocomplete(query: query)
+            let endpoint = BooruEndpoint.danbooruAutocomplete(baseURL: source.baseURL, query: query)
             let results: [AutocompleteTag] = try await apiClient.fetch(endpoint)
             return results.map { $0.asTag }
         default:
@@ -109,7 +109,7 @@ actor BooruService {
         page: Int,
         limit: Int
     ) async throws -> [Post] {
-        let endpoint = BooruEndpoint.danbooruPosts(tags: tags, page: page, limit: limit)
+        let endpoint = BooruEndpoint.danbooruPosts(baseURL: baseURL, tags: tags, page: page, limit: limit)
         let posts: [Post] = try await apiClient.fetch(endpoint)
         return posts
     }

@@ -12,14 +12,15 @@
   - **Moebooru** (Konachan, Yande.re)
   - **Gelbooru** Family: e621, e926, Rule34, Gelbooru (customizable)
 - **Modern UI**: Full-screen immersive viewer, masonry grid layout, and iPad sidebar support.
-- **Offline Favorites**: Save your favorite posts to the device database.
+- **Video & GIF Support**: Native playback with autoplay, looping, and mute controls.
+- **Offline Favorites**: Save your favorite posts to the device database with batch download.
 - **Tag Search**: Powerful tag search with blacklist support.
 - **Download & Share**: Save high-quality images to your Photo Library or share them directly.
 - **Customizable**: Light/Dark mode, grid columns, content filtering (SFW/NSFW), and more.
 
 ## Download & Sideloading
 
-📥 **[Download BoorIOS 1.1 IPA](https://github.com/elouannd/BoorIOS/releases/download/1.0/BoorIOS1.1.ipa)**
+📥 **[Download BoorIOS 1.2.0 IPA](https://github.com/elouannd/BoorIOS/releases/download/1.2.0/BoorIOS1.2.0.ipa)**
 
 Since this app is not on the App Store, you need to **sideload** it using a tool like:
 - **[AltStore](https://altstore.io/)** (Recommended)
